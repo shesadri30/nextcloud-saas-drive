@@ -1,0 +1,101 @@
+version: '3.9'
+
+services:
+  # ─── PostgreSQL Database ───────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: saas_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-saasuser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-saaspassword}
+      POSTGRES_DB: ${POSTGRES_DB:-nextcloud_saas}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - saas_network
+
+  # ─── Redis ────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: saas_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    networks:
+      - saas_network
+
+  # ─── Marketing Website ────────────────────────────────────────
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: saas_web
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - saas_network
+
+  # ─── Admin Panel ──────────────────────────────────────────────
+  admin:
+    build:
+      context: .
+      dockerfile: apps/admin/Dockerfile
+    container_name: saas_admin
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "3001:3001"
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - saas_network
+
+  # ─── User Panel ───────────────────────────────────────────────
+  user-panel:
+    build:
+      context: .
+      dockerfile: apps/user-panel/Dockerfile
+    container_name: saas_user_panel
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "3002:3002"
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - saas_network
+
+  # ─── Caddy Reverse Proxy ──────────────────────────────────────
+  caddy:
+    image: caddy:2-alpine
+    container_name: saas_caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infra/nginx/Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - saas_network
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  saas_network:
+    driver: bridge
+    name: saas_network
