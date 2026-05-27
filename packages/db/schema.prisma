@@ -1,0 +1,116 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── User ─────────────────────────────────────────────────────────────────────
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String?
+  passwordHash String?
+  role         Role      @default(USER)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  subscription      Subscription?
+  instance          NextcloudInstance?
+  invoices          Invoice[]
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+// ─── Plan ─────────────────────────────────────────────────────────────────────
+
+model Plan {
+  id             String         @id @default(cuid())
+  name           String         @unique
+  storageGB      Int
+  priceMonthly   Float
+  stripePriceId  String         @unique
+  isActive       Boolean        @default(true)
+  createdAt      DateTime       @default(now())
+
+  subscriptions  Subscription[]
+}
+
+// ─── Subscription ─────────────────────────────────────────────────────────────
+
+model Subscription {
+  id                   String    @id @default(cuid())
+  userId               String    @unique
+  planId               String
+  stripeSubscriptionId String    @unique
+  stripeCustomerId     String
+  status               SubStatus @default(ACTIVE)
+  currentPeriodStart   DateTime
+  currentPeriodEnd     DateTime
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan  Plan  @relation(fields: [planId], references: [id])
+}
+
+enum SubStatus {
+  ACTIVE
+  CANCELED
+  PAST_DUE
+  TRIALING
+  PAUSED
+}
+
+// ─── Nextcloud Instance ────────────────────────────────────────────────────────
+
+model NextcloudInstance {
+  id                String         @id @default(cuid())
+  userId            String         @unique
+  subdomain         String         @unique
+  status            InstanceStatus @default(PENDING)
+  storageGB         Int
+  s3Bucket          String
+  s3Endpoint        String
+  s3AccessKey       String
+  s3SecretKey       String         // AES-256 encrypted at rest
+  s3Region          String         @default("auto")
+  dockerContainerId String?
+  provisionedAt     DateTime?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum InstanceStatus {
+  PENDING
+  PROVISIONING
+  ACTIVE
+  SUSPENDED
+  TERMINATED
+}
+
+// ─── Invoice ──────────────────────────────────────────────────────────────────
+
+model Invoice {
+  id              String    @id @default(cuid())
+  userId          String
+  stripeInvoiceId String    @unique
+  amount          Float
+  currency        String    @default("usd")
+  status          String
+  paidAt          DateTime?
+  createdAt       DateTime  @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
