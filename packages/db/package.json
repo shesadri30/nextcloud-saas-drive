@@ -1,0 +1,21 @@
+{
+  "name": "@saas/db",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./index.ts",
+  "scripts": {
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio",
+    "db:seed": "tsx seed.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.14.0"
+  },
+  "devDependencies": {
+    "prisma": "^5.14.0",
+    "tsx": "^4.11.2",
+    "typescript": "^5.4.5"
+  }
+}
