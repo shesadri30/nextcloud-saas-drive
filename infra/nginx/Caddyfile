@@ -1,0 +1,39 @@
+# ─── Caddy Reverse Proxy ───────────────────────────────────────────────────────
+# Replace yourdomain.com with your actual domain.
+
+# Marketing Website
+yourdomain.com {
+    reverse_proxy web:3000
+    encode gzip
+}
+
+# Admin Panel
+admin.yourdomain.com {
+    reverse_proxy admin:3001
+    encode gzip
+    # Restrict to your IP for extra security
+    # @blocked not remote_ip 1.2.3.4
+    # respond @blocked 403
+}
+
+# User Panel
+app.yourdomain.com {
+    reverse_proxy user-panel:3002
+    encode gzip
+}
+
+# Wildcard — Nextcloud user instances (*.yourdomain.com)
+# Each user subdomain maps to a running Nextcloud container via dynamic upstream
+*.yourdomain.com {
+    tls {
+        dns cloudflare {env.CF_API_TOKEN}
+    }
+
+    @user_instance header_regexp Host ^(?P<subdomain>[^.]+)\.yourdomain\.com$
+    handle @user_instance {
+        # Dynamic port mapping via a small reverse proxy or API
+        # This requires a custom Caddy module or a simple Nginx map.
+        # See infra/scripts/provision-instance.sh for port assignment.
+        reverse_proxy {header.Host}:8100
+    }
+}
